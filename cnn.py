@@ -17,32 +17,31 @@ class CNNClassifier(Estimator):
                  optimizer,
                  model_dir=None, config=None, warm_start_from=None):
         '''
-        Example
+        Example:
         feature_columns = [feature_a, feature_b]
-
         convolutional_layers = [
             {'filters': 32,
             'kernel_size': [5, 5], # allows integer for x=y
             'padding': 'same',     # defaulted to valid
             'activation': 'relu'}, # TODO: this is now always relu
-            {}
+            {etc}
             ]
         pooling_layers = [
             {'pool_size': [2, 2],   # allows integer for x=y
             'strides': 2},
-            {}
+            {etc}
             ]
         assert(len(pooling_layers) == len(convolutional_layers))
         dense_layers = [
             {'units': 1024,
             'activation': 'relu', # TODO: this is now always relu
             'dropout': 0.4},      # defaulted to None
-            {}
+            {etc}
             ]
         n_classes = 10
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
         '''
-        # Sanity checks
+        # Sanity checks (most already done by tf)
         if len(pooling_layers) != len(convolutional_layers):
             raise RuntimeError('len(pooling_layers) != len(convolutional_layers)')
         
@@ -138,10 +137,9 @@ class CNNClassifier(Estimator):
             return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
         # Add evaluation metrics (for EVAL mode)
-        eval_metric_ops = {
-            "accuracy": tf.metrics.accuracy(labels=labels,
-                                            predictions=predictions["classes"])
-            }
+        eval_metric_ops = {"accuracy": tf.metrics.accuracy(labels=labels,
+                                                           predictions=predictions["classes"])
+        }
         return tf.estimator.EstimatorSpec(mode=mode,
                                           loss=loss,
                                           eval_metric_ops=eval_metric_ops)

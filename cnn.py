@@ -8,6 +8,7 @@ https://www.tensorflow.org/api_docs/python/tf/estimator/Estimator
 
 class CNNClassifier(tf.estimator.Estimator):
     def __init__(self,
+                 images_shape,
                  convolutional_layers,
                  pooling_layers,
                  dense_layers,
@@ -16,6 +17,7 @@ class CNNClassifier(tf.estimator.Estimator):
                  model_dir=None, config=None, warm_start_from=None):
         '''
         Example:
+        images_shape = [width, height, channels]
         convolutional_layers = [
             {'filters': 32,
             'kernel_size': [5, 5], # allows integer for x=y
@@ -39,11 +41,14 @@ class CNNClassifier(tf.estimator.Estimator):
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
         '''
         # Sanity checks (most already done by tf)
+        if len(images_shape) != 3:
+            raise RuntimeError('images_shape must be in the shape of [width, height, channels]')
         if len(pooling_layers) != len(convolutional_layers):
             raise RuntimeError('len(pooling_layers) != len(convolutional_layers)')
         
         # Make it params
         params = {
+            'images_shape': images_shape,
             'convolutional_layers': convolutional_layers,
             'pooling_layers': pooling_layers,
             'dense_layers': dense_layers,
@@ -62,31 +67,53 @@ class CNNClassifier(tf.estimator.Estimator):
         Returns:
         logits: last layer before applying softmax to calculate loss
         '''
-        # TODO: Condition input accordingly
-        net = tf.reshape(input_layer, [-1, 28, 28, 1])
-        
+        #### print("Input layer shape:", input_layer.shape)
+        width  = params['images_shape'][0]
+        height = params['images_shape'][1]
+        depth  = params['images_shape'][2]
+        net = tf.reshape(input_layer, [-1, width, height, depth])
+        #### print("Reshaped input layer shape:", net.shape)
         # Convolutional + pooling
         convolutional_layers = params['convolutional_layers']
         pooling_layers = params['pooling_layers']
         
         for conv, pool in zip(convolutional_layers, pooling_layers):
             # Convolutional layer
+            # Pre-process
             padding = 'valid'
             if 'padding' in conv:
                 padding = conv['padding']
+            k_size = conv['kernel_size']
+            if isinstance(k_size, int):
+                k_size = [k_size, k_size]
+            
             net = tf.layers.conv2d(inputs=net,
                                    filters=conv['filters'],
-                                   kernel_size=conv['kernel_size'],
+                                   kernel_size=k_size,
                                    padding=padding,
                                    activation=tf.nn.relu)
+            depth = conv['filters'] # Depth is equal to the last number of filters/channels
+            if padding == 'valid':
+                width = width - k_size[0] + 1
+                height = height  - k_size[1] + 1
             # Pooling layer
+            # Pre-process
+            p_size = pool['pool_size']
+            if isinstance(p_size, int):
+                p_size = [p_size, p_size]
+            strides = pool['strides']
+            if isinstance(strides, int):
+                strides = [strides, strides]
             net = tf.layers.max_pooling2d(inputs=net,
-                                          pool_size=pool['pool_size'],
-                                          strides=pool['strides'])
-        
-        # TODO: Flatten, need to get original image sizes
-        # and resize according to convolutional and pooling layers
-        net = tf.reshape(net, [-1, 7 * 7 * 64])
+                                          pool_size=p_size,
+                                          strides=strides)
+            width  = (width - p_size[0])//strides[0] + 1
+            height = (height - p_size[1])//strides[1] + 1
+
+        #### print("Logits input layer shape:", net.shape)
+        #### print("width: {}\nheight: {}\ndepth: {}".format(width, height, depth))
+        net = tf.reshape(net, [-1, width * height * depth])
+        #### print("Logits output layer shape:", net.shape)
         
         # Dense layers
         dense_layers = params['dense_layers']

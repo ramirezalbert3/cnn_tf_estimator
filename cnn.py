@@ -8,7 +8,6 @@ https://www.tensorflow.org/api_docs/python/tf/estimator/Estimator
 
 class CNNClassifier(tf.estimator.Estimator):
     def __init__(self,
-                 feature_columns,
                  convolutional_layers,
                  pooling_layers,
                  dense_layers,
@@ -17,7 +16,6 @@ class CNNClassifier(tf.estimator.Estimator):
                  model_dir=None, config=None, warm_start_from=None):
         '''
         Example:
-        feature_columns = [feature_a, feature_b]
         convolutional_layers = [
             {'filters': 32,
             'kernel_size': [5, 5], # allows integer for x=y
@@ -46,7 +44,6 @@ class CNNClassifier(tf.estimator.Estimator):
         
         # Make it params
         params = {
-            'feature_columns': feature_columns,
             'convolutional_layers': convolutional_layers,
             'pooling_layers': pooling_layers,
             'dense_layers': dense_layers,
@@ -60,12 +57,13 @@ class CNNClassifier(tf.estimator.Estimator):
                          params=params,
                          warm_start_from=warm_start_from)
         
-    def _construct_network(input_layer, params):
+    def _construct_network(self, input_layer, mode, params):
         '''
         Returns:
         logits: last layer before applying softmax to calculate loss
         '''
-        net = input_layer
+        # TODO: Condition input accordingly
+        net = tf.reshape(input_layer, [-1, 28, 28, 1])
         
         # Convolutional + pooling
         convolutional_layers = params['convolutional_layers']
@@ -103,12 +101,11 @@ class CNNClassifier(tf.estimator.Estimator):
         logits = tf.layers.dense(inputs=net, units=params['n_classes'])
         return logits
  
-    def _model_fn(self, features, labels, mode, params=None):
+    def _model_fn(self, features, labels, mode, params):
         '''
         features shape is: [batch_size, image_height, image_width, channels]
         '''
-        input_layer = tf.feature_column.input_layer(features, params['feature_columns'])
-        logits = _construct_network(input_layer, params)
+        logits = self._construct_network(features, mode, params)
         
         # TODO: READ AND REWRITE THIS
         predictions = {

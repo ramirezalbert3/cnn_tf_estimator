@@ -1,5 +1,4 @@
 import tensorflow as tf
-from tf.estimator import Estimator, EstimatorSpec
 
 '''
 https://www.tensorflow.org/tutorials/layers
@@ -7,7 +6,7 @@ https://www.tensorflow.org/get_started/custom_estimators
 https://www.tensorflow.org/api_docs/python/tf/estimator/Estimator
 '''
 
-class CNNClassifier(Estimator):
+class CNNClassifier(tf.estimator.Estimator):
     def __init__(self,
                  feature_columns,
                  convolutional_layers,
@@ -51,8 +50,8 @@ class CNNClassifier(Estimator):
             'convolutional_layers': convolutional_layers,
             'pooling_layers': pooling_layers,
             'dense_layers': dense_layers,
-            'logit_layers': logit_layers,
-            'n_classes': n_classes
+            'n_classes': n_classes,
+            'optimizer': optimizer
             }
         
         super().__init__(model_fn=self._model_fn,
@@ -103,11 +102,8 @@ class CNNClassifier(Estimator):
         # Logits layer
         logits = tf.layers.dense(inputs=net, units=params['n_classes'])
         return logits
-
-
-        
-        
-    def _model_fn(features, labels, mode, params=None):
+ 
+    def _model_fn(self, features, labels, mode, params=None):
         '''
         features shape is: [batch_size, image_height, image_width, channels]
         '''
